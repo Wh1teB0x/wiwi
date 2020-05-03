@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -30,17 +31,30 @@ type TwitterConfig struct {
 }
 
 func main() {
+	var channelName string
+	var hashTag string
+
+	flag.StringVar(&channelName, "c", "", "twitch channel name")
+	flag.StringVar(&hashTag, "h", "", "twitter hash tag")
+
+	flag.Parse()
+
 	ch1 := make(chan bool)
 	ch2 := make(chan bool)
 
-	go startTwitchCommentStream(ch1)
-	go startTwitterHashTagStream(ch2)
+	go startTwitchCommentStream(ch1, channelName)
+	go startTwitterHashTagStream(ch2, hashTag)
 
 	<-ch1
 	<-ch2
 }
 
-func startTwitchCommentStream(done chan bool) {
+func startTwitchCommentStream(done chan bool, channelName string) {
+	if channelName == "" {
+		done <- true
+		return
+	}
+
 	var config TwitchConfig
 	envconfig.Process("TWITCH", &config)
 
@@ -51,8 +65,7 @@ func startTwitchCommentStream(done chan bool) {
 	con.UseTLS = true
 	con.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
-	channel := os.Args[1]
-	con.AddCallback("001", func(e *irc.Event) { con.Join(channel) })
+	con.AddCallback("001", func(e *irc.Event) { con.Join(channelName) })
 	con.AddCallback("PRIVMSG", printTwitchMessage)
 	err := con.Connect(serverssl)
 	if err != nil {
@@ -72,7 +85,12 @@ func startTwitchCommentStream(done chan bool) {
 	done <- true
 }
 
-func startTwitterHashTagStream(done chan bool) {
+func startTwitterHashTagStream(done chan bool, hashTag string) {
+	if hashTag == "" {
+		done <- true
+		return
+	}
+
 	var c TwitterConfig
 	envconfig.Process("TWITTER", &c)
 	config := oauth1.NewConfig(c.ConsumerKey, c.ConsumerSecret)
@@ -84,9 +102,7 @@ func startTwitterHashTagStream(done chan bool) {
 	demux := twitter.NewSwitchDemux()
 	demux.Tweet = printTweet
 
-	track := os.Args[2]
-	fmt.Printf("start twitter streaming: %s\n", track)
-	filterParams := &twitter.StreamFilterParams{Track: []string{track}}
+	filterParams := &twitter.StreamFilterParams{Track: []string{hashTag}}
 	stream, err := client.Streams.Filter(filterParams)
 	if err != nil {
 		log.Fatal(err)

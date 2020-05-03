@@ -3,7 +3,7 @@ Twitterの指定ハッシュタグのツイートと、Twitchの指定チャン�
 
 ## Usage
 ```
-$ wiwi #mogra #MU2020
+$ wiwi -c #mogra -h #MU2020
 ```
 
 ## Installation
