@@ -53,7 +53,7 @@ func startTwitchCommentStream(done chan bool) {
 
 	channel := os.Args[1]
 	con.AddCallback("001", func(e *irc.Event) { con.Join(channel) })
-	con.AddCallback("PRIVMSG", printMessage)
+	con.AddCallback("PRIVMSG", printTwitchMessage)
 	err := con.Connect(serverssl)
 	if err != nil {
 		fmt.Printf("Err %s", err)
@@ -82,9 +82,7 @@ func startTwitterHashTagStream(done chan bool) {
 	client := twitter.NewClient(httpClient)
 
 	demux := twitter.NewSwitchDemux()
-	demux.Tweet = func(tweet *twitter.Tweet) {
-		fmt.Printf("[twitter]%s: %s\n", tweet.User.Name, tweet.Text)
-	}
+	demux.Tweet = printTweet
 
 	track := os.Args[2]
 	fmt.Printf("start twitter streaming: %s\n", track)
@@ -106,6 +104,10 @@ func startTwitterHashTagStream(done chan bool) {
 	done <- true
 }
 
-func printMessage(e *irc.Event) {
-	fmt.Printf("[twitch]%s: %s\n", e.User, e.Arguments[1])
+func printTweet(tweet *twitter.Tweet) {
+	fmt.Printf("<twitter> %s: %s\n", tweet.User.ScreenName, tweet.Text)
+}
+
+func printTwitchMessage(e *irc.Event) {
+	fmt.Printf("[twitch] %s: %s\n", e.User, e.Arguments[1])
 }
